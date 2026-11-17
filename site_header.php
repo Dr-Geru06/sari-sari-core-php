@@ -17,25 +17,7 @@ $customer = current_customer();
 
             <a href="index.php">Home</a>
 
-            <?php if ($customer): ?>
-
-                <a href="account.php">My Account</a>
-
-                <?php if ((int) $customer['is_admin'] === 1): ?>
-                    <a href="admin/index.php">Admin</a>
-                <?php endif; ?>
-
-                <form class="logout-form" method="post" action="logout.php">
-                    <input type="hidden"
-                           name="csrf_token"
-                           value="<?= e(csrf_token()) ?>">
-
-                    <button class="nav-button" type="submit">
-                        Sign Out
-                    </button>
-                </form>
-
-            <?php else: ?>
+            <?php if (!$customer): ?>
 
                 <a href="login.php">Sign In</a>
                 <a href="register.php" class="register-link">Register</a>
@@ -48,6 +30,34 @@ $customer = current_customer();
                 <span>Cart</span>
                 <span class="cart-count"><?= cart_count() ?></span>
             </a>
+
+            <?php if ($customer): ?>
+                <details class="customer-profile-menu">
+                    <summary class="customer-profile-toggle">
+                        <span class="customer-avatar">
+                            <?php if ($customer['profile_image_path']): ?>
+                                <img src="<?= e($customer['profile_image_path']) ?>" alt="">
+                            <?php else: ?>
+                                <?= e(strtoupper(substr($customer['full_name'], 0, 1))) ?>
+                            <?php endif; ?>
+                        </span>
+                        <span class="customer-profile-name"><?= e($customer['full_name']) ?></span>
+                        <span class="customer-profile-chevron" aria-hidden="true"></span>
+                    </summary>
+                    <div class="customer-profile-dropdown">
+                        <div class="customer-dropdown-user">
+                            <strong><?= e($customer['full_name']) ?></strong>
+                            <small><?= e($customer['email']) ?></small>
+                        </div>
+                        <a href="account.php">My Account</a>
+                        <a href="profile.php">Profile settings</a>
+                        <form method="post" action="logout.php">
+                            <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+                            <button type="submit">Sign Out</button>
+                        </form>
+                    </div>
+                </details>
+            <?php endif; ?>
 
         </nav>
     </div>

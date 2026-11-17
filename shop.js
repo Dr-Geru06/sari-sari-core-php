@@ -30,3 +30,61 @@ document.querySelectorAll('.add-to-cart-form').forEach((form) => {
         window.setTimeout(() => form.submit(), 220);
     });
 });
+
+const productDialog = document.getElementById('product-details-modal');
+if (productDialog) {
+    const dialogName = productDialog.querySelector('[data-product-dialog-name]');
+    const dialogDescription = productDialog.querySelector('[data-product-dialog-description]');
+    const dialogSeller = productDialog.querySelector('[data-product-dialog-seller]');
+    const dialogSellerDetails = productDialog.querySelector('[data-product-dialog-seller-details]');
+    const dialogPrice = productDialog.querySelector('[data-product-dialog-price]');
+    const dialogStock = productDialog.querySelector('[data-product-dialog-stock]');
+    const dialogImage = productDialog.querySelector('[data-product-dialog-image]');
+    const dialogFallback = productDialog.querySelector('[data-product-dialog-fallback]');
+    const dialogProductId = productDialog.querySelector('[name="product_id"]');
+    const dialogAddButton = productDialog.querySelector('[data-product-dialog-add]');
+
+    document.querySelectorAll('[data-product-open]').forEach((trigger) => {
+        trigger.addEventListener('click', () => {
+            const card = trigger.closest('.product-card');
+            if (!card || typeof productDialog.showModal !== 'function') return;
+
+            const productName = card.dataset.productName;
+            const stock = Number(card.dataset.productStock);
+            dialogName.textContent = productName;
+            dialogDescription.textContent = card.dataset.productDescription;
+            dialogSeller.textContent = card.dataset.productSellerName;
+            dialogSellerDetails.textContent = card.dataset.productSellerDetails.trim()
+                || 'Seller details have not been added yet.';
+            dialogPrice.textContent = card.dataset.productPrice;
+            dialogStock.textContent = stock > 0 ? `Remaining stock: ${stock}` : 'Sold out';
+            dialogProductId.value = card.dataset.productId;
+            dialogAddButton.disabled = stock < 1;
+            dialogAddButton.textContent = stock > 0 ? 'Add to cart' : 'Sold out';
+
+            if (card.dataset.productImage) {
+                dialogImage.src = card.dataset.productImage;
+                dialogImage.alt = productName;
+                dialogImage.hidden = false;
+                dialogFallback.hidden = true;
+            } else {
+                dialogImage.removeAttribute('src');
+                dialogImage.alt = '';
+                dialogImage.hidden = true;
+                dialogFallback.hidden = false;
+            }
+
+            productDialog.showModal();
+        });
+    });
+
+    productDialog.querySelectorAll('[data-product-modal-close]').forEach((button) => {
+        button.addEventListener('click', () => productDialog.close());
+    });
+
+    productDialog.addEventListener('click', (event) => {
+        if (event.target === productDialog) {
+            productDialog.close();
+        }
+    });
+}

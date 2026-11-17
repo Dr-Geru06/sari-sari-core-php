@@ -1,6 +1,14 @@
 <?php
 require __DIR__ . '/_auth.php';
 
+$allowedStatuses = [
+    'pending' => 'Pending',
+    'ongoing' => 'Ongoing',
+    'on_shipment' => 'On shipment',
+    'delivered' => 'Delivered',
+    'cancelled' => 'Cancelled',
+];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_is_valid()) {
         flash('error', 'Your session expired. Please try again.');
@@ -9,9 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $orderId = filter_var($_POST['order_id'] ?? null, FILTER_VALIDATE_INT);
     $status = isset($_POST['status']) && is_string($_POST['status']) ? $_POST['status'] : '';
-    $allowedStatuses = ['new', 'processing', 'fulfilled'];
-
-    if ($orderId === false || $orderId === null || !in_array($status, $allowedStatuses, true)) {
+    if ($orderId === false || $orderId === null || !array_key_exists($status, $allowedStatuses)) {
         flash('error', 'Choose a valid order and status.');
         redirect('orders.php');
     }
@@ -36,7 +42,7 @@ $notice = flash('notice');
 $error = flash('error');
 $orders = db()->query(
     'SELECT o.id, o.order_number, o.customer_name, o.customer_email, o.shipping_address,
-            o.total, o.status, o.created_at, COALESCE(c.full_name, o.customer_name) AS account_name
+            o.payment_method, o.total, o.status, o.created_at, COALESCE(c.full_name, o.customer_name) AS account_name
      FROM orders o
      LEFT JOIN customers c ON c.id = o.customer_id
      ORDER BY o.created_at DESC
@@ -52,8 +58,6 @@ if ($orders) {
         $orderItems[$item['order_id']][] = $item;
     }
 }
-$allowedStatuses = ['new', 'processing', 'fulfilled'];
-
 require __DIR__ . '/_header.php';
 ?>
 <?php if ($notice): ?><p class="alert success" role="status"><?= e($notice) ?></p><?php endif; ?>
@@ -68,7 +72,7 @@ require __DIR__ . '/_header.php';
     <?php else: ?>
         <div class="admin-table-wrap">
             <table class="admin-table order-admin-table">
-                <thead><tr><th>Order</th><th>Customer</th><th>Delivery address</th><th>Items</th><th>Total</th><th>Status</th></tr></thead>
+                <thead><tr><th>Order</th><th>Customer</th><th>Delivery address</th><th>Items</th><th>Payment</th><th>Total</th><th>Status</th></tr></thead>
                 <tbody>
                 <?php foreach ($orders as $order): ?>
                     <tr>
@@ -80,19 +84,17 @@ require __DIR__ . '/_header.php';
                                 <span class="admin-item-line"><?= e($item['product_name']) ?> × <?= (int) $item['quantity'] ?></span>
                             <?php endforeach; ?>
                         </td>
+                        <td><?= e(payment_method_label($order['payment_method'])) ?></td>
                         <td class="table-money"><?= money($order['total']) ?></td>
                         <td>
-                            <form class="status-form" method="post" action="orders.php">
-                                <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
-                                <input type="hidden" name="order_id" value="<?= (int) $order['id'] ?>">
-                                <label class="sr-only" for="status-<?= (int) $order['id'] ?>">Status for <?= e($order['order_number']) ?></label>
-                                <select id="status-<?= (int) $order['id'] ?>" name="status">
-                                    <?php foreach ($allowedStatuses as $status): ?>
-                                        <option value="<?= e($status) ?>" <?= $order['status'] === $status ? 'selected' : '' ?>><?= e(ucfirst($status)) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <button class="button small" type="submit">Save</button>
-                            </form>
+                            <div class="order-status-actions">
+                                <span class="status-pill"><?= e(order_status_label($order['status'])) ?></span>
+                                <button class="button small secondary" type="button"
+                                        data-modal-open="order-status-modal"
+                                        data-order-id="<?= (int) $order['id'] ?>"
+                                        data-order-number="<?= e($order['order_number']) ?>"
+                                        data-order-status="<?= e($order['status']) ?>">Change</button>
+                            </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -101,4 +103,28 @@ require __DIR__ . '/_header.php';
         </div>
     <?php endif; ?>
 </section>
+<dialog class="admin-modal order-status-modal" id="order-status-modal" aria-labelledby="order-status-title">
+    <div class="admin-modal-heading">
+        <div>
+            <p class="eyebrow">FULFILLMENT</p>
+            <h2 id="order-status-title">Update order status</h2>
+        </div>
+        <button class="modal-close" type="button" data-modal-close aria-label="Close dialog">&times;</button>
+    </div>
+    <form class="order-status-modal-form" method="post" action="orders.php">
+        <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+        <input type="hidden" name="order_id" value="">
+        <p>Order <strong data-order-number></strong></p>
+        <label for="order-status-select">Status</label>
+        <select id="order-status-select" name="status">
+            <?php foreach ($allowedStatuses as $statusValue => $statusLabel): ?>
+                <option value="<?= e($statusValue) ?>"><?= e($statusLabel) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <div class="admin-form-actions">
+            <button class="button" type="submit">Save status</button>
+            <button class="button secondary" type="button" data-modal-close>Cancel</button>
+        </div>
+    </form>
+</dialog>
 <?php require __DIR__ . '/_footer.php'; ?>

@@ -58,6 +58,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('notice', 'Your cart has been updated.');
         }
     } elseif ($action === 'add') {
+        $returnToCart = isset($_POST['return_to_cart'])
+            && is_string($_POST['return_to_cart'])
+            && $_POST['return_to_cart'] === '1';
         $id = filter_var($_POST['product_id'] ?? null, FILTER_VALIDATE_INT);
         if ($id === false || $id === null || $id < 1) {
             flash('error', 'That product could not be added.');
@@ -78,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['cart'] = $items;
             flash('notice', 'Added to your cart.');
         }
-        redirect('index.php');
+        redirect($returnToCart ? 'cart.php' : 'index.php');
     }
 
     redirect('cart.php');

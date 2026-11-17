@@ -1,6 +1,10 @@
 <?php
 require __DIR__ . '/app.php';
 
+if (isset($_GET['admin']) && is_string($_GET['admin']) && $_GET['admin'] === '1') {
+    redirect('admin/login.php');
+}
+
 if (current_customer()) {
     redirect('account.php');
 }
@@ -13,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $email = isset($_POST['email']) && is_string($_POST['email']) ? strtolower(trim($_POST['email'])) : '';
     $password = isset($_POST['password']) && is_string($_POST['password']) ? $_POST['password'] : '';
-    $statement = db()->prepare('SELECT id, full_name, email, password_hash FROM customers WHERE email = ?');
+    $statement = db()->prepare('SELECT id, full_name, email, password_hash, is_admin FROM customers WHERE email = ?');
     $statement->execute([$email]);
     $customer = $statement->fetch();
 
@@ -35,18 +39,16 @@ $notice = flash('notice');
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Sign in | 
-        Sari-Sari Store
-    </title>
+    <title>Sign in | Sari-Sari Store</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <?php require __DIR__ . '/site_header.php'; ?>
 <main class="page-main auth-main">
     <section class="auth-card">
-        <p class="eyebrow">WELCOME BACK</p>
-        <h1 class="page-title">Sign in</h1>
-        <p class="auth-intro">Sign in to finish your order and see your past purchases.</p>
+    <p class="eyebrow">WELCOME BACK</p>
+    <h1 class="page-title">Sign in</h1>
+    <p class="auth-intro">Sign in to finish your order and see your past purchases.</p>
         <?php if ($notice): ?><p class="alert success" role="status"><?= e($notice) ?></p><?php endif; ?>
         <?php if ($error): ?><p class="alert error" role="alert"><?= e($error) ?></p><?php endif; ?>
         <form class="auth-form" method="post" action="login.php">
@@ -58,6 +60,7 @@ $notice = flash('notice');
             <button class="button checkout-button" type="submit">Sign in</button>
         </form>
         <p class="auth-switch">New to Sari-Sari Store? <a href="register.php">Create an account</a></p>
+        <p class="auth-switch"><a href="admin/login.php">Administrator sign in</a></p>
     </section>
 </main>
 <?php require __DIR__ . '/site_footer.php'; ?>

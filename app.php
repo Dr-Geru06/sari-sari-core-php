@@ -114,7 +114,93 @@ function cents_to_price(int $cents): string
 
 function money(string $price): string
 {
-    return '$' . number_format(price_to_cents($price) / 100, 2);
+    return '₱' . number_format(price_to_cents($price) / 100, 2);
+}
+
+function order_status_label(string $status): string
+{
+    $labels = [
+        'pending' => 'Pending',
+        'ongoing' => 'Ongoing',
+        'on_shipment' => 'On shipment',
+        'delivered' => 'Delivered',
+        'cancelled' => 'Cancelled',
+    ];
+
+    return $labels[$status] ?? ucfirst(str_replace('_', ' ', $status));
+}
+
+function payment_method_label(string $method): string
+{
+    $labels = [
+        'cod' => 'Cash on delivery (COD)',
+        'online_test' => 'Online payment (test only)',
+    ];
+
+    return $labels[$method] ?? ucfirst(str_replace('_', ' ', $method));
+}
+
+function save_profile_image(?array $upload): ?string
+{
+    if ($upload === null) {
+        return null;
+    }
+
+    $error = filter_var($upload['error'] ?? null, FILTER_VALIDATE_INT);
+    if ($error !== UPLOAD_ERR_OK) {
+        throw new InvalidArgumentException('Choose a JPG, PNG, or WebP profile picture under 5 MB.');
+    }
+
+    $temporaryPath = $upload['tmp_name'] ?? null;
+    if (!is_string($temporaryPath) || !is_uploaded_file($temporaryPath)) {
+        throw new InvalidArgumentException('Choose a valid profile picture and try again.');
+    }
+
+    $fileSize = filesize($temporaryPath);
+    if ($fileSize === false || $fileSize < 1 || $fileSize > 5 * 1024 * 1024) {
+        throw new InvalidArgumentException('Profile pictures must be smaller than 5 MB.');
+    }
+
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($temporaryPath);
+    $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+    if (!is_string($mime) || !isset($extensions[$mime])) {
+        throw new InvalidArgumentException('Use a JPG, PNG, or WebP profile picture.');
+    }
+
+    $imageInfo = @getimagesize($temporaryPath);
+    if (!is_array($imageInfo) || ($imageInfo['mime'] ?? null) !== $mime) {
+        throw new InvalidArgumentException('The uploaded file is not a valid image.');
+    }
+
+    $width = (int) $imageInfo[0];
+    $height = (int) $imageInfo[1];
+    if ($width < 1 || $height < 1 || $width > 6000 || $height > 6000 || $width * $height > 20000000) {
+        throw new InvalidArgumentException('Images must be at most 6000 pixels per side and 20 megapixels.');
+    }
+
+    $uploadDirectory = __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'profiles';
+    if (!is_dir($uploadDirectory) && !mkdir($uploadDirectory, 0755, true) && !is_dir($uploadDirectory)) {
+        throw new RuntimeException('Unable to create the profile picture folder.');
+    }
+
+    $fileName = bin2hex(random_bytes(16)) . '.' . $extensions[$mime];
+    if (!move_uploaded_file($temporaryPath, $uploadDirectory . DIRECTORY_SEPARATOR . $fileName)) {
+        throw new RuntimeException('Unable to save the uploaded profile picture.');
+    }
+
+    return 'uploads/profiles/' . $fileName;
+}
+
+function remove_profile_image(?string $imagePath): void
+{
+    if ($imagePath === null || !preg_match('#\Auploads/profiles/[a-f0-9]{32}\.(?:jpg|png|webp)\z#', $imagePath)) {
+        return;
+    }
+
+    $filePath = __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'profiles' . DIRECTORY_SEPARATOR . basename($imagePath);
+    if (is_file($filePath) && !unlink($filePath)) {
+        error_log('Could not remove profile picture: ' . $filePath);
+    }
 }
 
 function current_customer(): ?array
@@ -124,7 +210,7 @@ function current_customer(): ?array
         return null;
     }
 
-    $statement = db()->prepare('SELECT id, full_name, email, is_admin FROM customers WHERE id = ?');
+    $statement = db()->prepare('SELECT id, full_name, email, is_admin, profile_image_path FROM customers WHERE id = ?');
     $statement->execute([$customerId]);
     $customer = $statement->fetch();
 
@@ -136,6 +222,25 @@ function current_customer(): ?array
     return $customer;
 }
 
+function current_admin(): ?array
+{
+    $adminId = filter_var($_SESSION['admin_id'] ?? null, FILTER_VALIDATE_INT);
+    if ($adminId === false || $adminId === null || $adminId < 1) {
+        return null;
+    }
+
+    $statement = db()->prepare('SELECT id, full_name, email, is_admin, profile_image_path FROM customers WHERE id = ? AND is_admin = 1');
+    $statement->execute([$adminId]);
+    $admin = $statement->fetch();
+
+    if (!$admin) {
+        unset($_SESSION['admin_id']);
+        return null;
+    }
+
+    return $admin;
+}
+
 function establish_customer_session(array $customer): void
 {
     session_regenerate_id(true);
@@ -143,16 +248,27 @@ function establish_customer_session(array $customer): void
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
+function establish_admin_session(array $admin): void
+{
+    session_regenerate_id(true);
+
+    $customerId = filter_var($_SESSION['customer_id'] ?? null, FILTER_VALIDATE_INT);
+    if ($customerId !== false && $customerId !== null && $customerId === (int) $admin['id']) {
+        unset($_SESSION['customer_id']);
+    }
+
+    $_SESSION['admin_id'] = (int) $admin['id'];
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 function redirect_after_login(): void
 {
-    if ($_SESSION['admin_after_login'] ?? false) {
-        $destination = 'admin/index.php';
-    } elseif ($_SESSION['checkout_after_login'] ?? false) {
+    if ($_SESSION['checkout_after_login'] ?? false) {
         $destination = 'checkout.php';
     } else {
         $destination = 'account.php';
     }
 
-    unset($_SESSION['admin_after_login'], $_SESSION['checkout_after_login']);
+    unset($_SESSION['checkout_after_login']);
     redirect($destination);
 }

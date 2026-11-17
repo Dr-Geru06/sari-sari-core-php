@@ -7,7 +7,7 @@ $activePage = 'overview';
 $totals = db()->query(
     "SELECT COUNT(*) AS order_count,
             COALESCE(SUM(total), 0) AS order_value,
-            COALESCE(SUM(status = 'new'), 0) AS new_orders
+            COALESCE(SUM(status = 'pending'), 0) AS pending_orders
      FROM orders"
 )->fetch();
 $monthTotals = db()->query(
@@ -66,7 +66,7 @@ require __DIR__ . '/_header.php';
     <article class="admin-metric">
         <div class="metric-topline"><span>Total orders</span><span class="metric-dot green"></span></div>
         <strong><?= number_format((int) $totals['order_count']) ?></strong>
-        <small><?= number_format((int) $totals['new_orders']) ?> new and awaiting review</small>
+        <small><?= number_format((int) $totals['pending_orders']) ?> pending and awaiting fulfillment</small>
     </article>
     <article class="admin-metric">
         <div class="metric-topline"><span>Order value</span><span class="metric-dot orange"></span></div>
@@ -123,7 +123,7 @@ require __DIR__ . '/_header.php';
                         <tr>
                             <td><a class="order-number" href="orders.php"><?= e($order['order_number']) ?></a><small><?= e(date('M j', strtotime($order['created_at']))) ?></small></td>
                             <td><?= e($order['customer_name']) ?><small><?= e($order['customer_email']) ?></small></td>
-                            <td><span class="status-pill"><?= e(ucfirst($order['status'])) ?></span></td>
+                            <td><span class="status-pill"><?= e(order_status_label($order['status'])) ?></span></td>
                             <td class="table-money"><?= money($order['total']) ?></td>
                         </tr>
                     <?php endforeach; ?>

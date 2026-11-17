@@ -21,6 +21,7 @@ $order = $_SESSION['last_order'] ?? null;
             <h1>Thank you for your order.</h1>
             <p>Your order has been saved. No payment was collected.</p>
             <div class="receipt-number"><span>Order number</span><strong><?= e((string) $order['number']) ?></strong></div>
+            <div class="receipt-number"><span>Payment method</span><strong><?= e(payment_method_label((string) ($order['payment_method'] ?? 'cod'))) ?></strong></div>
             <div class="receipt-number"><span>Order total</span><strong><?= money((string) $order['total']) ?></strong></div>
             <a class="button" href="index.php">Back to the shop</a>
         </section>
