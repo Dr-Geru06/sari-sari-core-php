@@ -39,7 +39,7 @@ $notice = flash('notice');
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Sign in | Sari-Sari Store</title>
+    <title>TEST SARI-SARI LOGIN</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -47,7 +47,7 @@ $notice = flash('notice');
 <main class="page-main auth-main">
     <section class="auth-card">
     <p class="eyebrow">WELCOME BACK</p>
-    <h1 class="page-title">Sign in</h1>
+    <h1 class="page-title">Sign in to Sari-Sari</h1> 
     <p class="auth-intro">Sign in to finish your order and see your past purchases.</p>
         <?php if ($notice): ?><p class="alert success" role="status"><?= e($notice) ?></p><?php endif; ?>
         <?php if ($error): ?><p class="alert error" role="alert"><?= e($error) ?></p><?php endif; ?>
@@ -60,7 +60,7 @@ $notice = flash('notice');
             <button class="button checkout-button" type="submit">Sign in</button>
         </form>
         <p class="auth-switch">New to Sari-Sari Store? <a href="register.php">Create an account</a></p>
-        <p class="auth-switch"><a href="admin/login.php">Administrator sign in</a></p>
+        <p class="auth-switch"><a href="admin/login.php">Administrator sign in(for now)</a></p>
     </section>
 </main>
 <?php require __DIR__ . '/site_footer.php'; ?>

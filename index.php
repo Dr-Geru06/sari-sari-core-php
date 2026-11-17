@@ -19,7 +19,7 @@ if (is_int($categoryId) && $categoryId > 0) {
     }
 }
 
-$conditions = ['p.is_active = 1'];
+$conditions = ['p.is_active = 1', 'p.approval_status = \'approved\'', '(p.shop_id IS NULL OR s.id IS NOT NULL)'];
 $parameters = [];
 if ($search !== '') {
     $conditions[] = '(p.name LIKE ? OR p.description LIKE ?)';
@@ -31,9 +31,10 @@ if ($selectedCategory !== null) {
     $parameters[] = (int) $selectedCategory['id'];
 }
 $statement = db()->prepare(
-    'SELECT p.id, p.name, p.description, p.seller_name, p.seller_details, p.price, p.stock, p.image_path, c.name AS category_name
+    'SELECT p.id, p.shop_id, p.name, p.description, p.seller_name, p.seller_details, p.price, p.stock, p.is_available, p.image_path, c.name AS category_name, s.store_name
      FROM products p
      INNER JOIN product_categories c ON c.id = p.category_id
+     LEFT JOIN shops s ON s.id = p.shop_id AND s.status = \'approved\'
      WHERE ' . implode(' AND ', $conditions) . '
      ORDER BY p.name'
 );
@@ -47,16 +48,17 @@ $error = flash('error');
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>1D9Gs</title>
+    <title>SariSari</title>
     <link rel="stylesheet" href="style.css">
     <script src="shop.js" defer></script>
     <link rel="stylesheet"
 href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
-<body>
+<body class="storefront-home">
 <?php require __DIR__ . '/site_header.php'; ?>
 <main>
     <section class="hero">
+        <img class="hero-illustration" src="assets/gold-shopping-hero.svg" alt="A golden shopping bag with everyday essentials" fetchpriority="high">
         <p class="eyebrow">GOOD THINGS, MADE SIMPLE</p>
         <h1>Find your next<br><span>everyday favorite.</span></h1>
         <p>Thoughtful essentials for home, work, and everywhere in between.</p>
@@ -95,6 +97,7 @@ href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.m
         <?php else: ?>
             <div class="product-grid">
                 <?php foreach ($products as $product): ?>
+                    <?php $canOrder = (int) $product['is_available'] === 1 && (int) $product['stock'] > 0; ?>
                     <article
                         class="product-card reveal-card"
                         data-product-id="<?= (int) $product['id'] ?>"
@@ -104,6 +107,8 @@ href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.m
                         data-product-seller-details="<?= e((string) $product['seller_details']) ?>"
                         data-product-price="<?= e(money($product['price'])) ?>"
                         data-product-stock="<?= (int) $product['stock'] ?>"
+                        data-product-available="<?= (int) $product['is_available'] ?>"
+                        data-product-store-url="<?= $product['shop_id'] ? e('shop.php?id=' . (int) $product['shop_id']) : '' ?>"
                         data-product-image="<?= e((string) $product['image_path']) ?>">
                         <div class="product-art <?= $product['image_path'] ? 'has-image' : '' ?>">
                             <button class="product-art-trigger" type="button" data-product-open aria-label="View details for <?= e($product['name']) ?>" aria-haspopup="dialog">
@@ -117,14 +122,20 @@ href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.m
                         <div class="product-info">
                             <h3><button class="product-title-trigger" type="button" data-product-open aria-haspopup="dialog"><?= e($product['name']) ?></button></h3>
                             <span class="product-category-label"><?= e($product['category_name']) ?></span>
+                            <?php if ($product['shop_id']): ?><span class="product-seller-link">Sold by <a href="shop.php?id=<?= (int) $product['shop_id'] ?>"><?= e($product['store_name']) ?></a></span><?php endif; ?>
                             <p><?= e($product['description']) ?></p>
-                            <div class="product-stock-count<?= (int) $product['stock'] < 1 ? ' is-sold-out' : '' ?>">
-                                <span>Remaining stock</span>
-                                <strong><?= (int) $product['stock'] ?></strong>
+                            <div class="product-stock-count<?= $canOrder ? '' : ' is-sold-out' ?>">
+                                <?php if ($canOrder): ?>
+                                    <span>Remaining stock</span>
+                                    <strong><?= (int) $product['stock'] ?></strong>
+                                <?php else: ?>
+                                    <span>Availability</span>
+                                    <strong>Out of stock</strong>
+                                <?php endif; ?>
                             </div>
                             <div class="product-bottom">
                                 <strong><?= money($product['price']) ?></strong>
-                                <?php if ((int) $product['stock'] > 0): ?>
+                                <?php if ($canOrder): ?>
                                     <form class="add-to-cart-form" method="post" action="cart.php">
                                         <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
                                         <input type="hidden" name="action" value="add">
@@ -159,6 +170,7 @@ href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.m
                 <p class="eyebrow">SOLD BY</p>
                 <strong data-product-dialog-seller></strong>
                 <p data-product-dialog-seller-details></p>
+                <a class="seller-store-link" data-product-dialog-store-link hidden>Visit this seller's shop</a>
             </section>
             <div class="product-dialog-price">
                 <strong data-product-dialog-price></strong>

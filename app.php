@@ -33,6 +33,17 @@ function e(string $value): string
     return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+function valid_contact_number(string $contactNumber): bool
+{
+    $digits = preg_replace('/\D/', '', $contactNumber);
+
+    return strlen($contactNumber) <= 30
+        && preg_match('/\A\+?[0-9][0-9(). -]*\z/', $contactNumber) === 1
+        && is_string($digits)
+        && strlen($digits) >= 7
+        && strlen($digits) <= 15;
+}
+
 function csrf_token(): string
 {
     if (empty($_SESSION['csrf_token'])) {
@@ -72,21 +83,60 @@ function cart(): array
     return isset($_SESSION['cart']) && is_array($_SESSION['cart']) ? $_SESSION['cart'] : [];
 }
 
+function cart_selection_ids(): array
+{
+    $cart = cart();
+    $rawSelection = $_SESSION['cart_selected_product_ids'] ?? array_keys($cart);
+    if (!is_array($rawSelection)) {
+        return [];
+    }
+
+    $selectedIds = [];
+    foreach ($rawSelection as $rawId) {
+        $id = filter_var($rawId, FILTER_VALIDATE_INT);
+        if ($id !== false && $id !== null && $id > 0 && array_key_exists($id, $cart)) {
+            $selectedIds[$id] = (int) $id;
+        }
+    }
+
+    return array_values($selectedIds);
+}
+
+function selected_cart(): array
+{
+    $cart = cart();
+    $selectedCart = [];
+    foreach (cart_selection_ids() as $id) {
+        $selectedCart[$id] = $cart[$id];
+    }
+
+    return $selectedCart;
+}
+
 function cart_count(): int
 {
     return array_sum(cart());
 }
 
-function cart_items(): array
+function cart_items(?array $cartContents = null): array
 {
-    $cart = cart();
+    $cart = $cartContents ?? cart();
     if (!$cart) {
         return [];
     }
 
     $ids = array_map('intval', array_keys($cart));
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
-    $statement = db()->prepare("SELECT id, name, price, stock FROM products WHERE is_active = 1 AND id IN ({$placeholders})");
+    $statement = db()->prepare(
+        "SELECT p.id, p.name, p.price, p.stock, p.is_available, p.image_path
+         FROM products p
+         WHERE p.is_active = 1
+           AND p.approval_status = 'approved'
+           AND (p.shop_id IS NULL OR EXISTS (
+               SELECT 1 FROM shops s WHERE s.id = p.shop_id AND s.status = 'approved'
+           ))
+           AND p.id IN ({$placeholders})"
+    );
     $statement->execute($ids);
 
     $items = [];
@@ -210,7 +260,7 @@ function current_customer(): ?array
         return null;
     }
 
-    $statement = db()->prepare('SELECT id, full_name, email, is_admin, profile_image_path FROM customers WHERE id = ?');
+    $statement = db()->prepare('SELECT id, full_name, email, contact_number, is_admin, profile_image_path FROM customers WHERE id = ?');
     $statement->execute([$customerId]);
     $customer = $statement->fetch();
 
@@ -220,6 +270,19 @@ function current_customer(): ?array
     }
 
     return $customer;
+}
+
+function seller_shop_for_customer(int $customerId): ?array
+{
+    $statement = db()->prepare(
+        'SELECT id, customer_id, store_name, description, status, review_note, created_at, updated_at, approved_at
+         FROM shops
+         WHERE customer_id = ?'
+    );
+    $statement->execute([$customerId]);
+    $shop = $statement->fetch();
+
+    return $shop ?: null;
 }
 
 function current_admin(): ?array

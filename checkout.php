@@ -30,6 +30,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['checkout_delivery_address'] = $submittedAddress;
     }
 
+    $submittedContactNumber = isset($_POST['contact_number']) && is_string($_POST['contact_number'])
+        ? trim($_POST['contact_number'])
+        : '';
+    if (strlen($submittedContactNumber) <= 30) {
+        $_SESSION['checkout_contact_number'] = $submittedContactNumber;
+    }
+
     if (array_key_exists('quantity_change', $_POST)) {
         $quantityChanges = $_POST['quantity_change'];
         if (!is_array($quantityChanges) || count($quantityChanges) !== 1) {
@@ -39,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $id = filter_var(array_key_first($quantityChanges), FILTER_VALIDATE_INT);
         $change = reset($quantityChanges);
-        $cart = cart();
+        $cart = selected_cart();
         if (
             $id === false
             || $id === null
@@ -60,8 +67,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('cart.php');
         }
 
-        $productStatement = db()->prepare('SELECT name, stock FROM products WHERE id = ? AND is_active = 1');
-        $productStatement->execute([$id]);
+        $productStatement = db()->prepare(
+            'SELECT p.name, p.stock
+             FROM products p
+             WHERE p.id = ? AND p.is_active = 1 AND p.is_available = 1 AND p.approval_status = ?
+               AND (p.shop_id IS NULL OR EXISTS (
+                   SELECT 1 FROM shops s WHERE s.id = p.shop_id AND s.status = ?
+               ))'
+        );
+        $productStatement->execute([$id, 'approved', 'approved']);
         $product = $productStatement->fetch();
         if (!$product) {
             unset($cart[$id]);
@@ -98,6 +112,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $_SESSION['checkout_payment_method'] = $paymentMethod;
 
+    $contactNumber = isset($_POST['contact_number']) && is_string($_POST['contact_number'])
+        ? trim($_POST['contact_number'])
+        : '';
+    if (!valid_contact_number($contactNumber)) {
+        flash('error', 'Enter a valid contact number using 7 to 15 digits.');
+        redirect('checkout.php');
+    }
+
     $address = isset($_POST['address']) && is_string($_POST['address'])
         ? trim($_POST['address'])
         : '';
@@ -107,10 +129,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('checkout.php');
     }
 
-    $cart = cart();
+    $cart = selected_cart();
 
     if (!$cart) {
-        flash('error', 'Your cart is empty.');
+        flash('error', cart() ? 'Select at least one product to check out.' : 'Your cart is empty.');
         redirect('cart.php');
     }
 
@@ -123,7 +145,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $selectProduct = $connection->prepare(
             'SELECT id, name, price, stock
              FROM products
-             WHERE id = ? AND is_active = 1
+             WHERE id = ? AND is_active = 1 AND is_available = 1 AND approval_status = \'approved\'
+               AND (shop_id IS NULL OR EXISTS (
+                   SELECT 1 FROM shops s WHERE s.id = products.shop_id AND s.status = \'approved\'
+               ))
              FOR UPDATE'
         );
 
@@ -157,8 +182,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $insertOrder = $connection->prepare(
             'INSERT INTO orders
-            (customer_id, order_number, customer_name, customer_email, shipping_address, payment_method, total, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+            (customer_id, order_number, customer_name, customer_email, customer_contact_number, shipping_address, payment_method, total, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
         $insertOrder->execute([
@@ -166,6 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $orderNumber,
             $customer['full_name'],
             $customer['email'],
+            $contactNumber,
             $address,
             $paymentMethod,
             cents_to_price($totalCents),
@@ -212,22 +238,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         throw $exception;
     }
 
-    $_SESSION['cart'] = [];
+    $_SESSION['cart'] = array_diff_key(cart(), $cart);
+    $_SESSION['cart_selected_product_ids'] = [];
 
     $_SESSION['last_order'] = [
         'number' => $orderNumber,
         'total' => cents_to_price($totalCents),
         'payment_method' => $paymentMethod
     ];
-    unset($_SESSION['checkout_payment_method'], $_SESSION['checkout_delivery_address']);
+    unset($_SESSION['checkout_payment_method'], $_SESSION['checkout_delivery_address'], $_SESSION['checkout_contact_number']);
 
     redirect('order_success.php');
 }
 
-$items = cart_items();
+$items = cart_items(selected_cart());
 
 if (!$items) {
-    flash('error', 'Add some products to your cart before checking out.');
+    flash('error', cart() ? 'Select at least one product to check out.' : 'Add some products to your cart before checking out.');
     redirect('cart.php');
 }
 
@@ -243,6 +270,7 @@ $error = flash('error');
 $notice = flash('notice');
 $selectedPaymentMethod = $_SESSION['checkout_payment_method'] ?? 'cod';
 $deliveryAddress = $_SESSION['checkout_delivery_address'] ?? '';
+$deliveryContactNumber = $_SESSION['checkout_contact_number'] ?? $customer['contact_number'];
 ?>
 
 <!doctype html>
@@ -371,6 +399,28 @@ $deliveryAddress = $_SESSION['checkout_delivery_address'] ?? '';
 
                     </div>
 
+
+                    <!-- CONTACT NUMBER -->
+                    <div class="checkout-field">
+                        <label for="contact-number">
+                            Contact number
+                            <span class="required-mark">*</span>
+                        </label>
+                        <p class="field-description">
+                            Required for delivery contact. Use 7 to 15 digits; a country code and common separators are accepted.
+                        </p>
+                        <input
+                            id="contact-number"
+                            type="number"
+                            name="contact_number"
+                            autocomplete="tel"
+                            inputmode="tel"
+                            maxlength="30"
+                            value="<?= e((string) $deliveryContactNumber) ?>"
+                            placeholder="e.g. 0912 345 6789"
+                            required
+                        >
+                    </div>
 
                     <!-- DELIVERY ADDRESS -->
                     <div class="checkout-field">
@@ -505,6 +555,7 @@ $deliveryAddress = $_SESSION['checkout_delivery_address'] ?? '';
 
                         <?php
                         $lineTotal = price_to_cents($item['price']) * $item['quantity'];
+                        $canOrder = (int) $item['is_available'] === 1 && (int) $item['stock'] > 0;
                         ?>
 
                         <div class="summary-product">
@@ -525,7 +576,7 @@ $deliveryAddress = $_SESSION['checkout_delivery_address'] ?? '';
                                         aria-label="Remove one <?= e($item['name']) ?>"
                                         title="Remove one"
                                         formnovalidate
-                                        <?= (int) $item['quantity'] <= 1 ? 'disabled' : '' ?>
+                                        <?= !$canOrder || (int) $item['quantity'] <= 1 ? 'disabled' : '' ?>
                                     >&minus;</button>
                                     <button
                                         class="checkout-quantity-button"
@@ -535,10 +586,12 @@ $deliveryAddress = $_SESSION['checkout_delivery_address'] ?? '';
                                         aria-label="Add one more <?= e($item['name']) ?>"
                                         title="Add one more"
                                         formnovalidate
-                                        <?= (int) $item['quantity'] >= (int) $item['stock'] ? 'disabled' : '' ?>
+                                        <?= !$canOrder || (int) $item['quantity'] >= (int) $item['stock'] ? 'disabled' : '' ?>
                                     >+</button>
                                 </div>
-                                <?php if ((int) $item['quantity'] >= (int) $item['stock']): ?>
+                                <?php if (!$canOrder): ?>
+                                    <small class="checkout-quantity-limit">Out of stock. <a href="cart.php">Remove it from your cart</a> before checking out.</small>
+                                <?php elseif ((int) $item['quantity'] >= (int) $item['stock']): ?>
                                     <small class="checkout-quantity-limit">Maximum available stock</small>
                                 <?php endif; ?>
 

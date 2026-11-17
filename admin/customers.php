@@ -135,7 +135,7 @@ $activePage = 'customers';
 $notice = flash('notice');
 $error = flash('error');
 $customers = db()->query(
-    'SELECT c.id, c.full_name, c.email, c.is_admin, c.profile_image_path, c.created_at,
+    'SELECT c.id, c.full_name, c.email, c.contact_number, c.is_admin, c.profile_image_path, c.created_at,
             COALESCE(order_totals.order_count, 0) AS order_count,
             COALESCE(order_totals.order_value, 0) AS order_value
      FROM customers c
@@ -175,7 +175,7 @@ require __DIR__ . '/_header.php';
                                         <?= e(strtoupper(substr($customer['full_name'], 0, 1))) ?>
                                     <?php endif; ?>
                                 </span>
-                                <span><strong><?= e($customer['full_name']) ?></strong><small><?= e($customer['email']) ?></small></span>
+                                <span><strong><?= e($customer['full_name']) ?></strong><small><?= e($customer['email']) ?></small><small>Contact: <?= e($customer['contact_number'] !== '' ? $customer['contact_number'] : 'Not provided') ?></small></span>
                             </div>
                         </td>
                         <td><?= e(date('M j, Y', strtotime($customer['created_at']))) ?></td>

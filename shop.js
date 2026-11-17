@@ -37,6 +37,7 @@ if (productDialog) {
     const dialogDescription = productDialog.querySelector('[data-product-dialog-description]');
     const dialogSeller = productDialog.querySelector('[data-product-dialog-seller]');
     const dialogSellerDetails = productDialog.querySelector('[data-product-dialog-seller-details]');
+    const dialogStoreLink = productDialog.querySelector('[data-product-dialog-store-link]');
     const dialogPrice = productDialog.querySelector('[data-product-dialog-price]');
     const dialogStock = productDialog.querySelector('[data-product-dialog-stock]');
     const dialogImage = productDialog.querySelector('[data-product-dialog-image]');
@@ -51,16 +52,24 @@ if (productDialog) {
 
             const productName = card.dataset.productName;
             const stock = Number(card.dataset.productStock);
+            const isAvailable = card.dataset.productAvailable === '1' && stock > 0;
             dialogName.textContent = productName;
             dialogDescription.textContent = card.dataset.productDescription;
             dialogSeller.textContent = card.dataset.productSellerName;
             dialogSellerDetails.textContent = card.dataset.productSellerDetails.trim()
                 || 'Seller details have not been added yet.';
+            if (card.dataset.productStoreUrl) {
+                dialogStoreLink.href = card.dataset.productStoreUrl;
+                dialogStoreLink.hidden = false;
+            } else {
+                dialogStoreLink.removeAttribute('href');
+                dialogStoreLink.hidden = true;
+            }
             dialogPrice.textContent = card.dataset.productPrice;
-            dialogStock.textContent = stock > 0 ? `Remaining stock: ${stock}` : 'Sold out';
+            dialogStock.textContent = isAvailable ? `Remaining stock: ${stock}` : 'Out of stock';
             dialogProductId.value = card.dataset.productId;
-            dialogAddButton.disabled = stock < 1;
-            dialogAddButton.textContent = stock > 0 ? 'Add to cart' : 'Sold out';
+            dialogAddButton.disabled = !isAvailable;
+            dialogAddButton.textContent = isAvailable ? 'Add to cart' : 'Out of stock';
 
             if (card.dataset.productImage) {
                 dialogImage.src = card.dataset.productImage;

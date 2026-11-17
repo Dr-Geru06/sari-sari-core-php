@@ -12,11 +12,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $name = isset($_POST['name']) && is_string($_POST['name']) ? trim($_POST['name']) : '';
+    $contactNumber = isset($_POST['contact_number']) && is_string($_POST['contact_number'])
+        ? trim($_POST['contact_number'])
+        : '';
     $email = isset($_POST['email']) && is_string($_POST['email']) ? strtolower(trim($_POST['email'])) : '';
     $password = isset($_POST['password']) && is_string($_POST['password']) ? $_POST['password'] : '';
 
     if ($name === '' || strlen($name) > 120 || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 190) {
         flash('error', 'Enter your name and a valid email address.');
+        redirect('register.php');
+    }
+    if (!valid_contact_number($contactNumber)) {
+        flash('error', 'Enter a valid contact number using 7 to 15 digits.');
         redirect('register.php');
     }
     if (strlen($password) < 10 || strlen($password) > 72) {
@@ -25,8 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-        $statement = db()->prepare('INSERT INTO customers (full_name, email, password_hash) VALUES (?, ?, ?)');
-        $statement->execute([$name, $email, password_hash($password, PASSWORD_DEFAULT)]);
+        $statement = db()->prepare('INSERT INTO customers (full_name, email, contact_number, password_hash) VALUES (?, ?, ?, ?)');
+        $statement->execute([$name, $email, $contactNumber, password_hash($password, PASSWORD_DEFAULT)]);
     } catch (PDOException $exception) {
         if (($exception->errorInfo[1] ?? null) !== 1062) {
             throw $exception;
@@ -64,6 +71,9 @@ $notice = flash('notice');
             <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
             <label for="name">Full name</label>
             <input id="name" name="name" autocomplete="name" maxlength="120" required>
+            <label for="contact-number">Contact number</label>
+            <input id="contact-number" type="number" name="contact_number" autocomplete="tel" inputmode="tel" maxlength="11" required>
+            <small class="field-hint">Use 7 to 15 digits. You may include a country code, spaces, or hyphens.</small>
             <label for="email">Email address</label>
             <input id="email" type="email" name="email" autocomplete="email" maxlength="190" required>
             <label for="password">Password</label>

@@ -16,7 +16,26 @@ $monthTotals = db()->query(
      WHERE created_at >= DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')"
 )->fetch();
 $customerCount = (int) db()->query('SELECT COUNT(*) FROM customers')->fetchColumn();
-$lowStockCount = (int) db()->query('SELECT COUNT(*) FROM products WHERE is_active = 1 AND stock <= 5')->fetchColumn();
+$shopStats = db()->query(
+    'SELECT COALESCE(SUM(status = \'approved\'), 0) AS approved_shop_count,
+            COALESCE(SUM(status = \'pending\'), 0) AS pending_shop_count,
+            COUNT(DISTINCT CASE WHEN status = \'approved\' THEN customer_id END) AS approved_seller_count
+     FROM shops'
+)->fetch();
+$productStats = db()->query(
+    'SELECT COUNT(*) AS total_product_count,
+            COALESCE(SUM(is_active = 1 AND approval_status = \'approved\'), 0) AS published_product_count,
+            COALESCE(SUM(approval_status = \'pending\'), 0) AS pending_review_count
+     FROM products'
+)->fetch();
+$lowStockCount = (int) db()->query(
+    'SELECT COUNT(*)
+     FROM products p
+     WHERE p.is_active = 1 AND p.approval_status = \'approved\' AND p.stock <= 5
+       AND (p.shop_id IS NULL OR EXISTS (
+           SELECT 1 FROM shops s WHERE s.id = p.shop_id AND s.status = \'approved\'
+       ))'
+)->fetchColumn();
 
 $monthlyRows = db()->query(
     "SELECT DATE_FORMAT(created_at, '%Y-%m') AS month_key,
@@ -57,7 +76,19 @@ $recentOrders = db()->query(
      LIMIT 8'
 )->fetchAll();
 $lowStockProducts = db()->query(
-    'SELECT name, stock FROM products WHERE is_active = 1 AND stock <= 5 ORDER BY stock, name LIMIT 5'
+    'SELECT p.name, p.stock FROM products p
+     WHERE p.is_active = 1 AND p.approval_status = \'approved\' AND p.stock <= 5
+       AND (p.shop_id IS NULL OR EXISTS (
+           SELECT 1 FROM shops s WHERE s.id = p.shop_id AND s.status = \'approved\'
+       ))
+     ORDER BY p.stock, p.name LIMIT 5'
+)->fetchAll();
+$approvedShops = db()->query(
+    'SELECT s.id, s.store_name, s.description, s.approved_at, c.full_name, c.email
+     FROM shops s
+     INNER JOIN customers c ON c.id = s.customer_id
+     WHERE s.status = \'approved\'
+     ORDER BY s.approved_at DESC, s.store_name'
 )->fetchAll();
 
 require __DIR__ . '/_header.php';
@@ -83,6 +114,49 @@ require __DIR__ . '/_header.php';
         <strong><?= number_format($customerCount) ?></strong>
         <small><?= number_format($lowStockCount) ?> products low in stock</small>
     </article>
+    <article class="admin-metric">
+        <div class="metric-topline"><span>Approved shops</span><span class="metric-dot green"></span></div>
+        <strong><?= number_format((int) $shopStats['approved_shop_count']) ?></strong>
+        <small><?= number_format((int) $shopStats['approved_seller_count']) ?> approved sellers</small>
+    </article>
+    <article class="admin-metric">
+        <div class="metric-topline"><span>Seller applications</span><span class="metric-dot orange"></span></div>
+        <strong><?= number_format((int) $shopStats['pending_shop_count']) ?></strong>
+        <small>Shops awaiting approval</small>
+    </article>
+    <article class="admin-metric">
+        <div class="metric-topline"><span>Products</span><span class="metric-dot blue"></span></div>
+        <strong><?= number_format((int) $productStats['total_product_count']) ?></strong>
+        <small><?= number_format((int) $productStats['published_product_count']) ?> published in the store</small>
+    </article>
+    <article class="admin-metric">
+        <div class="metric-topline"><span>Product reviews</span><span class="metric-dot purple"></span></div>
+        <strong><?= number_format((int) $productStats['pending_review_count']) ?></strong>
+        <small>Seller products awaiting review</small>
+    </article>
+</section>
+
+<section class="admin-panel approved-shops-panel">
+    <div class="panel-heading">
+        <div><p class="eyebrow">MARKETPLACE</p><h2>Approved shops &amp; sellers</h2></div>
+        <a class="panel-link" href="approved_shops.php">View all approved shops →</a>
+    </div>
+    <?php if (!$approvedShops): ?>
+        <div class="admin-empty">Approved seller shops will appear here.</div>
+    <?php else: ?>
+        <div class="approved-shop-list">
+            <?php foreach ($approvedShops as $shop): ?>
+                <article class="approved-shop-card">
+                    <div>
+                        <h3><?= e($shop['store_name']) ?></h3>
+                        <p><?= e($shop['description']) ?></p>
+                        <small><?= e($shop['full_name']) ?> · <?= e($shop['email']) ?></small>
+                    </div>
+                    <a class="button small secondary" href="../shop.php?id=<?= (int) $shop['id'] ?>">View shop</a>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 </section>
 
 <section class="admin-panel chart-panel">

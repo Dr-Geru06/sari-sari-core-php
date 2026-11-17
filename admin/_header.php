@@ -142,6 +142,24 @@
                     <span>Products</span>
                 </a>
 
+                <a class="<?= $activePage === 'shops' ? 'is-active' : '' ?>"
+                   href="shops.php">
+                    <i class="bi bi-person-lines-fill"></i>
+                    <span>Seller applications</span>
+                </a>
+
+                <a class="<?= $activePage === 'approved_shops' ? 'is-active' : '' ?>"
+                   href="approved_shops.php">
+                    <i class="bi bi-shop-window"></i>
+                    <span>Approved Shops</span>
+                </a>
+
+                <a class="<?= $activePage === 'product_reviews' ? 'is-active' : '' ?>"
+                   href="product_reviews.php">
+                    <i class="bi bi-clipboard-check"></i>
+                    <span>Product review</span>
+                </a>
+
                 <a class="<?= $activePage === 'categories' ? 'is-active' : '' ?>"
                    href="categories.php">
                     <i class="bi bi-tags"></i>

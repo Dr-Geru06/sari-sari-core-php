@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 440" fill="none">
+  <defs>
+    <radialGradient id="halo" cx="0" cy="0" r="1" gradientTransform="matrix(0 185 -185 0 287 211)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fffdf7"/>
+      <stop offset=".72" stop-color="#f6e8c2" stop-opacity=".68"/>
+      <stop offset="1" stop-color="#e4c77e" stop-opacity=".08"/>
+    </radialGradient>
+    <linearGradient id="bag" x1="168" x2="397" y1="190" y2="374" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f1d78f"/>
+      <stop offset=".48" stop-color="#d8b15a"/>
+      <stop offset="1" stop-color="#bc8d32"/>
+    </linearGradient>
+    <linearGradient id="bagSide" x1="356" x2="397" y1="214" y2="347" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d6af57"/>
+      <stop offset="1" stop-color="#a97a28"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="350" x2="431" y1="152" y2="289" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fffaf0"/>
+      <stop offset="1" stop-color="#ebd9ad"/>
+    </linearGradient>
+    <linearGradient id="jar" x1="110" x2="165" y1="203" y2="319" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fffef9"/>
+      <stop offset="1" stop-color="#e9d8ae"/>
+    </linearGradient>
+    <linearGradient id="ribbon" x1="264" x2="304" y1="202" y2="365" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fbf1d5"/>
+      <stop offset=".5" stop-color="#f3e4bf"/>
+      <stop offset="1" stop-color="#e5d19c"/>
+    </linearGradient>
+    <filter id="shadow" x="92" y="106" width="370" height="304" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" result="alpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+      <feOffset dy="12"/>
+      <feGaussianBlur stdDeviation="11"/>
+      <feComposite in2="SourceAlpha" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.35 0 0 0 0 0.25 0 0 0 0 0.08 0 0 0 0.18 0"/>
+      <feBlend in2="BackgroundImageFix" result="effect1_dropShadow"/>
+      <feBlend in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+    </filter>
+  </defs>
+
+  <circle cx="286" cy="212" r="182" fill="url(#halo)"/>
+  <circle cx="286" cy="212" r="150" stroke="#c6a14e" stroke-opacity=".2"/>
+  <circle cx="286" cy="212" r="128" stroke="#fffdf7" stroke-opacity=".74"/>
+  <ellipse cx="279" cy="364" fill="#9d7425" fill-opacity=".12" rx="137" ry="17"/>
+
+  <g stroke="#9e792d" stroke-linecap="round" stroke-opacity=".57">
+    <path d="M92 344c23-40 42-79 62-124"/>
+    <path d="M107 319c-17-1-26-10-28-26 16 1 25 9 28 26Z" fill="#d9bd79" fill-opacity=".54"/>
+    <path d="M119 291c-15-6-21-18-17-33 15 6 21 17 17 33Z" fill="#f3e7c7" fill-opacity=".8"/>
+    <path d="M133 261c-13-8-16-21-9-35 13 8 16 20 9 35Z" fill="#d7bb72" fill-opacity=".6"/>
+    <path d="M397 347c28-38 49-76 66-116"/>
+    <path d="M420 315c15-4 23-14 22-30-15 4-23 13-22 30Z" fill="#d9bd79" fill-opacity=".54"/>
+    <path d="M439 285c14-8 18-21 11-35-14 8-18 20-11 35Z" fill="#f3e7c7" fill-opacity=".8"/>
+    <path d="M452 253c12-10 14-23 5-36-12 10-14 22-5 36Z" fill="#d7bb72" fill-opacity=".6"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <path d="M356 169h67l13 27v111h-80V169Z" fill="url(#paper)" stroke="#c9ab62" stroke-width="2"/>
+    <path d="M356 196h80" stroke="#c9ab62" stroke-width="2"/>
+    <path d="M374 169v-13h34v13" stroke="#b48b3a" stroke-width="3"/>
+    <path d="M386 198h20v109h-20z" fill="#d3ae58" fill-opacity=".76"/>
+    <path d="M378 228h36" stroke="#fffaf0" stroke-opacity=".85" stroke-width="2"/>
+
+    <path d="M113 221c0-7 5-12 12-12h34c7 0 12 5 12 12v91h-58v-91Z" fill="url(#jar)" stroke="#b8954d" stroke-width="2"/>
+    <path d="M122 196h40v17h-40z" fill="#c59d4a"/>
+    <path d="M127 190c0-4 3-7 7-7h16c4 0 7 3 7 7v6h-30v-6Z" fill="#a87d2e"/>
+    <path d="M126 249h32v29h-32z" fill="#f6edda"/>
+    <path d="M133 257h18m-18 7h18" stroke="#ba9549" stroke-linecap="round" stroke-width="2"/>
+
+    <path d="M220 207v-34c0-34 25-58 57-58s57 24 57 58v34" stroke="#9b7227" stroke-linecap="round" stroke-width="13"/>
+    <path d="M220 207v-34c0-34 25-58 57-58s57 24 57 58v34" stroke="#f1d995" stroke-linecap="round" stroke-width="5"/>
+    <path d="M169 205c0-8 6-14 14-14h190c8 0 14 6 14 14v153c0 9-7 16-16 16H185c-9 0-16-7-16-16V205Z" fill="url(#bag)" stroke="#a97f30" stroke-width="2"/>
+    <path d="M357 191h16c8 0 14 6 14 14v153c0 9-7 16-16 16h-14V191Z" fill="url(#bagSide)" fill-opacity=".68"/>
+    <path d="M267 194h34v179h-34z" fill="url(#ribbon)" fill-opacity=".86"/>
+    <path d="M284 194v179" stroke="#fff9e9" stroke-opacity=".75" stroke-width="2"/>
+    <path d="M268 270c0-9 7-16 16-16s16 7 16 16v14h-32v-14Z" fill="#f8efda" fill-opacity=".92" stroke="#c6a14e" stroke-width="2"/>
+    <path d="M275 270c0-5 4-9 9-9s9 4 9 9" stroke="#b48b3a" stroke-width="2"/>
+    <circle cx="284" cy="292" r="24" fill="#fff9e9" fill-opacity=".86" stroke="#c6a14e" stroke-width="2"/>
+    <path d="M274 294c4-8 16-8 20 0m-16-6h.1m11 0h.1" stroke="#9e792d" stroke-linecap="round" stroke-width="2.5"/>
+    <path d="M279 299c3 2 7 2 10 0" stroke="#9e792d" stroke-linecap="round" stroke-width="2"/>
+  </g>
+
+  <g fill="#b68b36">
+    <path d="M184 126a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0-13v-6m0 31v-6m13-3h-6m-14 0h-6m22-9-4 4m-10 10-4 4m18 0-4-4m-10-10-4-4"/>
+    <path d="M451 132a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm0-10v-5m0 25v-5m10-5h-5m-10 0h-5m17-7-3 3m-7 7-3 3m13 0-3-3m-7-7-3-3"/>
+    <circle cx="128" cy="154" r="3"/>
+    <circle cx="415" cy="112" r="2.5"/>
+    <circle cx="467" cy="337" r="2"/>
+  </g>
+</svg>

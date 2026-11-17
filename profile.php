@@ -8,6 +8,7 @@ if (!$customer) {
     redirect($isAdminView ? '../admin/login.php' : 'login.php');
 }
 
+$sellerShop = $isAdminView ? null : seller_shop_for_customer((int) $customer['id']);
 $assetPrefix = $isAdminView ? '../' : '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -17,6 +18,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $action = isset($_POST['action']) && is_string($_POST['action']) ? $_POST['action'] : '';
+    if ($action === 'apply_seller' && !$isAdminView) {
+        $storeName = isset($_POST['store_name']) && is_string($_POST['store_name']) ? trim($_POST['store_name']) : '';
+        $description = isset($_POST['store_description']) && is_string($_POST['store_description']) ? trim($_POST['store_description']) : '';
+
+        if ($storeName === '' || strlen($storeName) > 120 || $description === '' || strlen($description) > 500) {
+            flash('error', 'Enter a store name and description within the listed limits.');
+            redirect('profile.php');
+        }
+        if ($sellerShop && $sellerShop['status'] !== 'rejected') {
+            flash('error', 'Your seller application is already being reviewed or approved.');
+            redirect('profile.php');
+        }
+
+        try {
+            if ($sellerShop) {
+                $applyStatement = db()->prepare(
+                    'UPDATE shops SET store_name = ?, description = ?, status = ?, review_note = NULL, approved_at = NULL
+                     WHERE id = ? AND customer_id = ? AND status = ?'
+                );
+                $applyStatement->execute([$storeName, $description, 'pending', $sellerShop['id'], $customer['id'], 'rejected']);
+            } else {
+                $applyStatement = db()->prepare(
+                    'INSERT INTO shops (customer_id, store_name, description, status) VALUES (?, ?, ?, ?)'
+                );
+                $applyStatement->execute([$customer['id'], $storeName, $description, 'pending']);
+            }
+        } catch (PDOException $exception) {
+            if (($exception->errorInfo[1] ?? null) !== 1062) {
+                throw $exception;
+            }
+            flash('error', 'That store name is already in use. Please choose another one.');
+            redirect('profile.php');
+        }
+
+        flash('notice', 'Your seller application was submitted for admin review.');
+        redirect('profile.php');
+    }
+
     if ($action === 'update_name' && !$isAdminView) {
         $fullName = isset($_POST['full_name']) && is_string($_POST['full_name']) ? trim($_POST['full_name']) : '';
         if ($fullName === '' || strlen($fullName) > 120) {
@@ -150,6 +189,45 @@ $error = flash('error');
             </div>
 
             <?php if (!$isAdminView): ?>
+                <div class="profile-settings-divider"></div>
+                <div class="profile-form-heading">
+                    <h2>Sell on Sari-Sari</h2>
+                    <p>Apply to open your own shop. An administrator must approve your shop before you can list products.</p>
+                </div>
+                <?php if ($sellerShop && $sellerShop['status'] === 'approved'): ?>
+                    <div class="seller-application-status is-approved">
+                        <strong>Your shop is approved: <?= e($sellerShop['store_name']) ?></strong>
+                        <p><?= e($sellerShop['description']) ?></p>
+                        <a class="button" href="seller/index.php">Open seller dashboard</a>
+                    </div>
+                <?php elseif ($sellerShop && $sellerShop['status'] === 'pending'): ?>
+                    <div class="seller-application-status">
+                        <strong>Seller application pending</strong>
+                        <p><?= e($sellerShop['store_name']) ?> · Submitted <?= e(date('M j, Y', strtotime($sellerShop['created_at']))) ?></p>
+                        <p>Your seller dashboard will unlock after admin approval.</p>
+                    </div>
+                <?php else: ?>
+                    <?php if ($sellerShop && $sellerShop['review_note']): ?>
+                        <div class="seller-application-status is-rejected">
+                            <strong>Your previous application was not approved</strong>
+                            <p><?= e($sellerShop['review_note']) ?></p>
+                        </div>
+                    <?php endif; ?>
+                    <form class="profile-form seller-application-form" method="post" action="profile.php">
+                        <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+                        <input type="hidden" name="action" value="apply_seller">
+                        <div>
+                            <label for="store-name">Store name</label>
+                            <input id="store-name" name="store_name" maxlength="120" value="<?= $sellerShop ? e($sellerShop['store_name']) : '' ?>" required>
+                        </div>
+                        <div>
+                            <label for="store-description">Store description</label>
+                            <textarea id="store-description" name="store_description" rows="4" maxlength="500" required><?= $sellerShop ? e($sellerShop['description']) : '' ?></textarea>
+                        </div>
+                        <button class="button" type="submit"><?= $sellerShop ? 'Resubmit application' : 'Apply to become a seller' ?></button>
+                    </form>
+                <?php endif; ?>
+
                 <div class="profile-settings-divider"></div>
                 <div class="profile-form-heading">
                     <h2>Edit profile</h2>

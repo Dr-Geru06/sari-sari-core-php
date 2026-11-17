@@ -1,71 +1,6 @@
 <?php
 require __DIR__ . '/_auth.php';
-
-function save_product_image(?array $upload): ?string
-{
-    if ($upload === null) {
-        return null;
-    }
-
-    $error = filter_var($upload['error'] ?? null, FILTER_VALIDATE_INT);
-    if ($error === UPLOAD_ERR_NO_FILE) {
-        return null;
-    }
-    if ($error !== UPLOAD_ERR_OK) {
-        throw new InvalidArgumentException('The image upload failed. Choose an image under 5 MB and try again.');
-    }
-
-    $temporaryPath = $upload['tmp_name'] ?? null;
-    if (!is_string($temporaryPath) || !is_uploaded_file($temporaryPath)) {
-        throw new InvalidArgumentException('Choose a valid product image and try again.');
-    }
-
-    $fileSize = filesize($temporaryPath);
-    if ($fileSize === false || $fileSize < 1 || $fileSize > 5 * 1024 * 1024) {
-        throw new InvalidArgumentException('Product images must be smaller than 5 MB.');
-    }
-
-    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($temporaryPath);
-    $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
-    if (!is_string($mime) || !isset($extensions[$mime])) {
-        throw new InvalidArgumentException('Use a JPG, PNG, or WebP image.');
-    }
-
-    $imageInfo = @getimagesize($temporaryPath);
-    if (!is_array($imageInfo) || ($imageInfo['mime'] ?? null) !== $mime) {
-        throw new InvalidArgumentException('The uploaded file is not a valid image.');
-    }
-
-    $width = (int) $imageInfo[0];
-    $height = (int) $imageInfo[1];
-    if ($width < 1 || $height < 1 || $width > 6000 || $height > 6000 || $width * $height > 20000000) {
-        throw new InvalidArgumentException('Images must be at most 6000 pixels per side and 20 megapixels.');
-    }
-
-    $uploadDirectory = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'products';
-    if (!is_dir($uploadDirectory) && !mkdir($uploadDirectory, 0755, true) && !is_dir($uploadDirectory)) {
-        throw new RuntimeException('Unable to create the product image folder.');
-    }
-
-    $fileName = bin2hex(random_bytes(16)) . '.' . $extensions[$mime];
-    if (!move_uploaded_file($temporaryPath, $uploadDirectory . DIRECTORY_SEPARATOR . $fileName)) {
-        throw new RuntimeException('Unable to save the uploaded product image.');
-    }
-
-    return 'uploads/products/' . $fileName;
-}
-
-function remove_product_image(?string $imagePath): void
-{
-    if ($imagePath === null || !preg_match('#\Auploads/products/[a-f0-9]{32}\.(?:jpg|png|webp)\z#', $imagePath)) {
-        return;
-    }
-
-    $filePath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'products' . DIRECTORY_SEPARATOR . basename($imagePath);
-    if (is_file($filePath) && !unlink($filePath)) {
-        error_log('Could not remove product image: ' . $filePath);
-    }
-}
+require_once dirname(__DIR__) . '/product_images.php';
 
 function product_form_values(): array
 {
@@ -113,6 +48,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $upload = $_FILES['image'] ?? null;
     if ($upload !== null && !is_array($upload)) {
         flash('error', 'Choose a valid product image.');
+        redirect('products.php');
+    }
+
+    if ($action === 'availability') {
+        $productId = filter_var($_POST['product_id'] ?? null, FILTER_VALIDATE_INT);
+        $isAvailable = filter_var($_POST['is_available'] ?? null, FILTER_VALIDATE_INT);
+        if ($productId === false || $productId === null || $productId < 1 || !in_array($isAvailable, [0, 1], true)) {
+            flash('error', 'Choose a valid product availability action.');
+            redirect('products.php');
+        }
+
+        $productStatement = db()->prepare('SELECT id, stock FROM products WHERE id = ?');
+        $productStatement->execute([$productId]);
+        $product = $productStatement->fetch();
+        if (!$product) {
+            flash('error', 'That product could not be found.');
+            redirect('products.php');
+        }
+
+        $availabilityStatement = db()->prepare('UPDATE products SET is_available = ? WHERE id = ?');
+        $availabilityStatement->execute([$isAvailable, $productId]);
+        flash(
+            'notice',
+            $isAvailable === 1 && (int) $product['stock'] < 1
+                ? 'Availability enabled, but add stock before customers can order this product.'
+                : ($isAvailable === 1 ? 'Product marked available.' : 'Product marked out of stock.')
+        );
         redirect('products.php');
     }
 
@@ -241,7 +203,7 @@ if (isset($_GET['edit'])) {
         redirect('products.php');
     }
 
-    $editStatement = db()->prepare('SELECT id, name, description, seller_name, seller_details, price, stock, category_id, image_path, is_active FROM products WHERE id = ?');
+    $editStatement = db()->prepare('SELECT id, name, description, seller_name, seller_details, price, stock, category_id, image_path, is_active, is_available FROM products WHERE id = ?');
     $editStatement->execute([$editId]);
     $editProduct = $editStatement->fetch();
     if (!$editProduct) {
@@ -263,7 +225,7 @@ foreach ($categories as $category) {
     }
 }
 $products = db()->query(
-    'SELECT p.id, p.name, p.description, p.seller_name, p.seller_details, p.price, p.stock, p.image_path, p.is_active, p.created_at, c.name AS category_name
+    'SELECT p.id, p.name, p.description, p.seller_name, p.seller_details, p.price, p.stock, p.image_path, p.is_active, p.is_available, p.created_at, c.name AS category_name
      FROM products p
      INNER JOIN product_categories c ON c.id = p.category_id
      ORDER BY p.created_at DESC'
@@ -300,6 +262,7 @@ require __DIR__ . '/_header.php';
                 <thead><tr><th scope="col">Product</th><th scope="col">Price</th><th scope="col">Stock / status</th><th scope="col">Actions</th></tr></thead>
                 <tbody>
                 <?php foreach ($products as $product): ?>
+                    <?php $canOrder = (int) $product['is_available'] === 1 && (int) $product['stock'] > 0; ?>
                     <tr>
                         <td>
                             <div class="product-table-item">
@@ -321,10 +284,18 @@ require __DIR__ . '/_header.php';
                             <div class="product-inventory-cell">
                                 <span class="stock-count <?= (int) $product['stock'] <= 5 ? 'stock-low' : '' ?>"><?= (int) $product['stock'] ?></span>
                                 <span class="product-state-pill <?= (int) $product['is_active'] === 1 ? 'is-visible' : '' ?>"><?= (int) $product['is_active'] === 1 ? 'Visible' : 'Hidden' ?></span>
+                                <span class="product-state-pill <?= $canOrder ? 'is-visible' : '' ?>"><?= $canOrder ? 'Available' : 'Out of stock' ?></span>
                             </div>
                         </td>
                         <td>
                             <div class="product-admin-actions">
+                                <form method="post" action="products.php">
+                                    <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+                                    <input type="hidden" name="action" value="availability">
+                                    <input type="hidden" name="product_id" value="<?= (int) $product['id'] ?>">
+                                    <input type="hidden" name="is_available" value="<?= (int) $product['is_available'] === 1 ? '0' : '1' ?>">
+                                    <button class="button small secondary" type="submit" aria-label="<?= (int) $product['is_available'] === 1 ? 'Mark ' . e($product['name']) . ' out of stock' : 'Mark ' . e($product['name']) . ' available' ?>"><?= (int) $product['is_available'] === 1 ? 'Mark out of stock' : 'Mark available' ?></button>
+                                </form>
                                 <a class="button small secondary" href="products.php?edit=<?= (int) $product['id'] ?>">Edit</a>
                                 <form method="post" action="products.php" onsubmit="return confirm('Permanently delete this product? Past order records will be retained.');">
                                     <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">

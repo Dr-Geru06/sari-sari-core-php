@@ -20,7 +20,7 @@ if (!$validToken) {
 if ($returnToAdmin) {
     unset($_SESSION['admin_id']);
 } else {
-    unset($_SESSION['customer_id'], $_SESSION['checkout_after_login'], $_SESSION['checkout_payment_method'], $_SESSION['checkout_delivery_address'], $_SESSION['last_order'], $_SESSION['cart']);
+    unset($_SESSION['customer_id'], $_SESSION['checkout_after_login'], $_SESSION['checkout_payment_method'], $_SESSION['checkout_delivery_address'], $_SESSION['checkout_contact_number'], $_SESSION['last_order'], $_SESSION['cart'], $_SESSION['cart_selected_product_ids']);
 }
 
 session_regenerate_id(true);

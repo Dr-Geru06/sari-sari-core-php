@@ -41,7 +41,7 @@ $activePage = 'orders';
 $notice = flash('notice');
 $error = flash('error');
 $orders = db()->query(
-    'SELECT o.id, o.order_number, o.customer_name, o.customer_email, o.shipping_address,
+    'SELECT o.id, o.order_number, o.customer_name, o.customer_email, o.customer_contact_number, o.shipping_address,
             o.payment_method, o.total, o.status, o.created_at, COALESCE(c.full_name, o.customer_name) AS account_name
      FROM orders o
      LEFT JOIN customers c ON c.id = o.customer_id
@@ -72,12 +72,16 @@ require __DIR__ . '/_header.php';
     <?php else: ?>
         <div class="admin-table-wrap">
             <table class="admin-table order-admin-table">
-                <thead><tr><th>Order</th><th>Customer</th><th>Delivery address</th><th>Items</th><th>Payment</th><th>Total</th><th>Status</th></tr></thead>
+                <thead><tr><th>Order</th><th>Customer</th><th>Contact number</th><th>Delivery address</th><th>Items</th><th>Payment</th><th>Total</th><th>Status</th></tr></thead>
                 <tbody>
                 <?php foreach ($orders as $order): ?>
                     <tr>
                         <td><strong class="order-number"><?= e($order['order_number']) ?></strong><small><?= e(date('M j, Y · g:i a', strtotime($order['created_at']))) ?></small></td>
-                        <td><?= e($order['account_name']) ?><small><?= e($order['customer_email']) ?></small></td>
+                        <td>
+                            <?= e($order['account_name']) ?>
+                            <small><?= e($order['customer_email']) ?></small>
+                        </td>
+                        <td class="contact-number-cell"><?= e($order['customer_contact_number'] !== '' ? $order['customer_contact_number'] : 'Not provided') ?></td>
                         <td class="address-cell"><?= nl2br(e($order['shipping_address'])) ?></td>
                         <td>
                             <?php foreach ($orderItems[$order['id']] ?? [] as $item): ?>
