@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/app.php';
 
+$adminStorePreview = isset($_GET['admin_preview']) && is_string($_GET['admin_preview']) && $_GET['admin_preview'] === '1';
 $search = trim((string) ($_GET['q'] ?? ''));
 if (strlen($search) > 100) {
     $search = substr($search, 0, 100);
@@ -62,12 +63,14 @@ href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.m
         <p class="eyebrow">GOOD THINGS, MADE SIMPLE</p>
         <h1>Find your next<br><span>everyday favorite.</span></h1>
         <p>Thoughtful essentials for home, work, and everywhere in between.</p>
-        <form class="search-form" method="get" action="index.php">
-            <label class="sr-only" for="search">Search products</label>
-            <input id="search" type="search" name="q" value="<?= e($search) ?>" placeholder="Search the shop">
-            <?php if ($selectedCategory !== null): ?><input type="hidden" name="category" value="<?= (int) $selectedCategory['id'] ?>"><?php endif; ?>
-            <button type="submit">Search</button>
-        </form>
+        <?php if (!$adminStorePreview): ?>
+            <form class="search-form" method="get" action="index.php">
+                <label class="sr-only" for="search">Search products</label>
+                <input id="search" type="search" name="q" value="<?= e($search) ?>" placeholder="Search the shop">
+                <?php if ($selectedCategory !== null): ?><input type="hidden" name="category" value="<?= (int) $selectedCategory['id'] ?>"><?php endif; ?>
+                <button type="submit">Search</button>
+            </form>
+        <?php endif; ?>
     </section>
 
     <section class="catalog">
@@ -78,12 +81,18 @@ href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.m
         <nav class="category-filters" aria-label="Shop by classification">
             <?php
             $allFilterQuery = $search !== '' ? ['q' => $search] : [];
+            if ($adminStorePreview) {
+                $allFilterQuery['admin_preview'] = '1';
+            }
             $allFilterUrl = 'index.php' . ($allFilterQuery ? '?' . http_build_query($allFilterQuery) : '');
             ?>
             <a class="<?= $selectedCategory === null ? 'is-active' : '' ?>" href="<?= e($allFilterUrl) ?>" <?= $selectedCategory === null ? 'aria-current="page"' : '' ?>>All</a>
             <?php foreach ($categories as $category): ?>
                 <?php
                 $filterQuery = $search !== '' ? ['q' => $search, 'category' => (int) $category['id']] : ['category' => (int) $category['id']];
+                if ($adminStorePreview) {
+                    $filterQuery['admin_preview'] = '1';
+                }
                 $filterUrl = 'index.php?' . http_build_query($filterQuery);
                 $isSelectedCategory = $selectedCategory !== null && (int) $selectedCategory['id'] === (int) $category['id'];
                 ?>
@@ -93,7 +102,7 @@ href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.m
         <?php if ($notice): ?><p class="alert success" role="status"><?= e($notice) ?></p><?php endif; ?>
         <?php if ($error): ?><p class="alert error" role="alert"><?= e($error) ?></p><?php endif; ?>
         <?php if (!$products): ?>
-            <div class="empty-state"><h3>No products found</h3><p>Try a different search, or browse the full collection.</p><a class="button secondary" href="index.php">View all products</a></div>
+            <div class="empty-state"><h3>No products found</h3><p>Try a different search, or browse the full collection.</p><a class="button secondary" href="index.php<?= $adminStorePreview ? '?admin_preview=1' : '' ?>">View all products</a></div>
         <?php else: ?>
             <div class="product-grid">
                 <?php foreach ($products as $product): ?>
@@ -108,7 +117,7 @@ href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.m
                         data-product-price="<?= e(money($product['price'])) ?>"
                         data-product-stock="<?= (int) $product['stock'] ?>"
                         data-product-available="<?= (int) $product['is_available'] ?>"
-                        data-product-store-url="<?= $product['shop_id'] ? e('shop.php?id=' . (int) $product['shop_id']) : '' ?>"
+                        data-product-store-url="<?= $product['shop_id'] ? e('shop.php?id=' . (int) $product['shop_id'] . ($adminStorePreview ? '&admin_preview=1' : '')) : '' ?>"
                         data-product-image="<?= e((string) $product['image_path']) ?>">
                         <div class="product-art <?= $product['image_path'] ? 'has-image' : '' ?>">
                             <button class="product-art-trigger" type="button" data-product-open aria-label="View details for <?= e($product['name']) ?>" aria-haspopup="dialog">
@@ -122,7 +131,7 @@ href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.m
                         <div class="product-info">
                             <h3><button class="product-title-trigger" type="button" data-product-open aria-haspopup="dialog"><?= e($product['name']) ?></button></h3>
                             <span class="product-category-label"><?= e($product['category_name']) ?></span>
-                            <?php if ($product['shop_id']): ?><span class="product-seller-link">Sold by <a href="shop.php?id=<?= (int) $product['shop_id'] ?>"><?= e($product['store_name']) ?></a></span><?php endif; ?>
+                            <?php if ($product['shop_id']): ?><span class="product-seller-link">Sold by <a href="shop.php?id=<?= (int) $product['shop_id'] ?><?= $adminStorePreview ? '&amp;admin_preview=1' : '' ?>"><?= e($product['store_name']) ?></a></span><?php endif; ?>
                             <p><?= e($product['description']) ?></p>
                             <div class="product-stock-count<?= $canOrder ? '' : ' is-sold-out' ?>">
                                 <?php if ($canOrder): ?>
@@ -135,13 +144,15 @@ href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.m
                             </div>
                             <div class="product-bottom">
                                 <strong><?= money($product['price']) ?></strong>
-                                <?php if ($canOrder): ?>
+                                <?php if ($canOrder && !$adminStorePreview): ?>
                                     <form class="add-to-cart-form" method="post" action="cart.php">
                                         <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
                                         <input type="hidden" name="action" value="add">
                                         <input type="hidden" name="product_id" value="<?= (int) $product['id'] ?>">
                                         <button class="button small" type="submit">Add to cart</button>
                                     </form>
+                                <?php elseif ($adminStorePreview): ?>
+                                    <span class="stock-note">View only</span>
                                 <?php else: ?>
                                     <span class="stock-note">Sold out</span>
                                 <?php endif; ?>
@@ -176,13 +187,15 @@ href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.m
                 <strong data-product-dialog-price></strong>
                 <span data-product-dialog-stock></span>
             </div>
-            <form class="product-dialog-cart-form" method="post" action="cart.php">
-                <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
-                <input type="hidden" name="action" value="add">
-                <input type="hidden" name="product_id" value="">
-                <input type="hidden" name="return_to_cart" value="1">
-                <button class="button" type="submit" data-product-dialog-add>Add to cart</button>
-            </form>
+            <?php if (!$adminStorePreview): ?>
+                <form class="product-dialog-cart-form" method="post" action="cart.php">
+                    <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+                    <input type="hidden" name="action" value="add">
+                    <input type="hidden" name="product_id" value="">
+                    <input type="hidden" name="return_to_cart" value="1">
+                    <button class="button" type="submit" data-product-dialog-add>Add to cart</button>
+                </form>
+            <?php endif; ?>
         </div>
     </div>
 </dialog>

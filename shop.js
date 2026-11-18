@@ -67,9 +67,13 @@ if (productDialog) {
             }
             dialogPrice.textContent = card.dataset.productPrice;
             dialogStock.textContent = isAvailable ? `Remaining stock: ${stock}` : 'Out of stock';
-            dialogProductId.value = card.dataset.productId;
-            dialogAddButton.disabled = !isAvailable;
-            dialogAddButton.textContent = isAvailable ? 'Add to cart' : 'Out of stock';
+            if (dialogProductId) {
+                dialogProductId.value = card.dataset.productId;
+            }
+            if (dialogAddButton) {
+                dialogAddButton.disabled = !isAvailable;
+                dialogAddButton.textContent = isAvailable ? 'Add to cart' : 'Out of stock';
+            }
 
             if (card.dataset.productImage) {
                 dialogImage.src = card.dataset.productImage;

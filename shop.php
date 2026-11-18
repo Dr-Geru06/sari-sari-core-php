@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/app.php';
 
+$adminStorePreview = isset($_GET['admin_preview']) && is_string($_GET['admin_preview']) && $_GET['admin_preview'] === '1';
 $shopId = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT);
 if ($shopId === false || $shopId === null || $shopId < 1) {
     http_response_code(404);
@@ -44,7 +45,7 @@ $products = $productStatement->fetchAll();
         <p class="eyebrow">SARI-SARI SELLER SHOP</p>
         <h1 class="page-title"><?= e($shop['store_name']) ?></h1>
         <p><?= e($shop['description']) ?></p>
-        <a class="text-button" href="index.php">&larr; Back to all products</a>
+        <a class="text-button" href="index.php<?= $adminStorePreview ? '?admin_preview=1' : '' ?>">&larr; Back to all products</a>
     </section>
     <section class="catalog public-shop-catalog">
         <div class="section-heading">
@@ -78,7 +79,7 @@ $products = $productStatement->fetchAll();
                             </div>
                             <div class="product-bottom">
                                 <strong><?= money($product['price']) ?></strong>
-                                <?php if ($canOrder): ?>
+                                <?php if ($canOrder && !$adminStorePreview): ?>
                                     <form class="add-to-cart-form" method="post" action="cart.php">
                                         <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
                                         <input type="hidden" name="action" value="add">
@@ -86,6 +87,8 @@ $products = $productStatement->fetchAll();
                                         <input type="hidden" name="return_to_cart" value="1">
                                         <button class="button small" type="submit">Add to cart</button>
                                     </form>
+                                <?php elseif ($adminStorePreview): ?>
+                                    <span class="stock-note">View only</span>
                                 <?php else: ?>
                                     <span class="stock-note">Sold out</span>
                                 <?php endif; ?>

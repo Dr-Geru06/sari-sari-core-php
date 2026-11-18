@@ -114,6 +114,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            const previewFrame = dialog.querySelector('[data-preview-src]');
+            if (previewFrame && !previewFrame.hasAttribute('src')) {
+                previewFrame.setAttribute('src', previewFrame.dataset.previewSrc);
+            }
+            if (button.closest('.admin-profile-dropdown')) {
+                profileDropdown.classList.remove('is-open');
+                profileToggle.setAttribute('aria-expanded', 'false');
+            }
+
             if (button.dataset.orderId) {
                 const orderId = dialog.querySelector('[name="order_id"]');
                 const orderStatus = dialog.querySelector('[name="status"]');

@@ -36,15 +36,16 @@
     </div>
 
     <div class="admin-top-actions">
-
-        <a href="../index.php"
-           class="admin-store-link"
-           target="_blank">
+  <h5>Experimental Only not Included ===></h5>
+        <button type="button"
+                class="admin-store-link"
+                data-modal-open="admin-store-preview"
+                aria-haspopup="dialog">
             <i class="bi bi-shop"></i>
             <span>View Store</span>
-            <i class="bi bi-box-arrow-up-right external-icon"></i>
-        </a>
-
+            <i class="bi bi-eye external-icon"></i>
+        </button>
+  
         <div class="admin-profile-wrapper">
 
             <button type="button"
@@ -83,10 +84,13 @@
                     Profile settings
                 </a>
 
-                <a href="../index.php">
+                <button type="button"
+                        class="admin-store-preview-menu-link"
+                        data-modal-open="admin-store-preview"
+                        aria-haspopup="dialog">
                     <i class="bi bi-shop"></i>
                     Visit Store
-                </a>
+                </button>
 
                 <form method="post" action="../logout.php">
                     <input type="hidden"
@@ -107,6 +111,20 @@
     </div>
 
 </header>
+
+<dialog class="admin-modal admin-store-preview-modal" id="admin-store-preview" aria-labelledby="admin-store-preview-title">
+    <div class="admin-store-preview-heading">
+        <div>
+            <p class="eyebrow">STORE PREVIEW</p>
+            <h2 id="admin-store-preview-title">View Store</h2>
+        </div>
+        <button class="modal-close" type="button" data-modal-close aria-label="Close store preview">&times;</button>
+    </div>
+    <iframe
+        data-preview-src="../index.php?admin_preview=1"
+        title="Read-only storefront preview"
+        sandbox="allow-scripts"></iframe>
+</dialog>
 
 <div class="admin-layout" id="adminLayout">
 

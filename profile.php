@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('profile.php');
     }
 
-    if ($action === 'update_name' && !$isAdminView) {
+    if ($action === 'update_name') {
         $fullName = isset($_POST['full_name']) && is_string($_POST['full_name']) ? trim($_POST['full_name']) : '';
         if ($fullName === '' || strlen($fullName) > 120) {
             flash('error', 'Enter a name between 1 and 120 characters.');
@@ -228,25 +228,26 @@ $error = flash('error');
                     </form>
                 <?php endif; ?>
 
-                <div class="profile-settings-divider"></div>
-                <div class="profile-form-heading">
-                    <h2>Edit profile</h2>
-                    <p>Your email address is fixed to your account and cannot be changed here.</p>
-                </div>
-                <form class="profile-form" method="post" action="profile.php">
-                    <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
-                    <input type="hidden" name="action" value="update_name">
-                    <div>
-                        <label for="full-name">Name</label>
-                        <input id="full-name" type="text" name="full_name" value="<?= e($customer['full_name']) ?>" maxlength="120" autocomplete="name" required>
-                    </div>
-                    <div>
-                        <label for="account-email">Email address</label>
-                        <input id="account-email" type="email" value="<?= e($customer['email']) ?>" readonly>
-                    </div>
-                    <button class="button" type="submit">Save changes</button>
-                </form>
             <?php endif; ?>
+
+            <div class="profile-settings-divider"></div>
+            <div class="profile-form-heading">
+                <h2>Edit profile</h2>
+                <p>Your email address is fixed to your account and cannot be changed here.</p>
+            </div>
+            <form class="profile-form" method="post" action="profile.php">
+                <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+                <input type="hidden" name="action" value="update_name">
+                <div>
+                    <label for="full-name">Name</label>
+                    <input id="full-name" type="text" name="full_name" value="<?= e($customer['full_name']) ?>" maxlength="120" autocomplete="name" required>
+                </div>
+                <div>
+                    <label for="account-email">Email address</label>
+                    <input id="account-email" type="email" value="<?= e($customer['email']) ?>" readonly>
+                </div>
+                <button class="button" type="submit">Save changes</button>
+            </form>
 
             <form class="profile-form" method="post" action="profile.php" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
